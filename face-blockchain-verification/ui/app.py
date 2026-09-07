@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sys
 import tempfile
 from datetime import datetime, timezone
@@ -29,6 +30,8 @@ if "activity_log" not in st.session_state:
     st.session_state.activity_log = []
 if "stage_index" not in st.session_state:
     st.session_state.stage_index = 0
+if "stage_failed" not in st.session_state:
+    st.session_state.stage_failed = False
 
 
 def log_activity(message: str, level: str = "INFO") -> None:
@@ -74,6 +77,8 @@ def render_stages(target) -> None:
     cells = []
     for index, name in enumerate(stages, start=1):
         state = "done" if index < st.session_state.stage_index else "active" if index == st.session_state.stage_index else "pending"
+        if st.session_state.stage_failed and index == st.session_state.stage_index:
+            state = "failed"
         glyph = "✓" if state == "done" else str(index).zfill(2)
         cells.append(f'<div class="stage {state}"><div class="stage-dot">{glyph}</div><div class="stage-name">{name}</div></div>')
     target.markdown(f'<div class="stage-rail">{"".join(cells)}</div>', unsafe_allow_html=True)
@@ -130,9 +135,11 @@ st.markdown(
     .stage { display:grid; grid-template-columns:2rem 1fr; gap:.5rem; align-items:center; border-top:2px solid var(--line); padding-top:.55rem; opacity:.45; }
     .stage.active { border-color:var(--orange); opacity:1; }
     .stage.done { border-color:var(--acid); opacity:.9; }
+    .stage.failed { border-color:#ff4d5e; opacity:1; }
     .stage-dot { width:1.7rem; height:1.7rem; border-radius:50%; display:grid; place-items:center; background:#292929; color:var(--muted); font-family:'DM Mono',monospace; font-size:.62rem; }
     .stage.active .stage-dot { background:var(--orange); color:var(--ink); box-shadow:0 0 0 .25rem rgba(255,91,36,.18); }
     .stage.done .stage-dot { background:var(--acid); color:var(--ink); }
+    .stage.failed .stage-dot { background:#ff4d5e; color:var(--ink); }
     .stage-name { font-family:'DM Mono',monospace; text-transform:uppercase; font-size:.66rem; letter-spacing:.06em; }
     @media (max-width:800px) { .hero{grid-template-columns:1fr;min-height:46vh}.hero-mark{text-align:left;font-size:9rem}.metric-row{grid-template-columns:repeat(2,1fr)}.timeline{grid-template-columns:repeat(2,1fr)}.step:nth-child(2n){border-right:0} }
     </style>
@@ -152,19 +159,22 @@ def _sha256(path: str) -> str:
 def _friendly_error(error: Exception) -> tuple[str, str]:
     message = str(error)
     lowered = message.lower()
+    safe_message = re.sub(r"(?i)(serpapi_key|private_key|api[_ -]?key)=?[^\s,;]+", r"\1=[redacted]", message)
     if "exactly one face" in lowered:
         if "found: 0" in lowered:
             return "Face detection", "No face was detected. Upload a clear image containing one face."
         return "Face detection", "Multiple faces were detected. Upload an image containing exactly one face."
     if "unable to read" in lowered or "unsupported or corrupt" in lowered:
         return "Input image", "The image is invalid, unsupported, or corrupt."
+    if "face detection failed" in lowered or "insightface" in lowered or "onnx" in lowered or "model" in lowered:
+        return "Face detection/model", f"The face model stage failed: {safe_message}"
     if "serpapi_key" in lowered:
         return "Reverse-image search", "SERPAPI_KEY is missing from the local environment."
     if "serpapi" in lowered or "reverse" in lowered:
         return "Reverse-image search", "The reverse-image search request failed."
     if "rpc" in lowered or "blockchain" in lowered or "gas" in lowered:
         return "Blockchain", "Polygon could not confirm the verification transaction."
-    return "Verification", "The pipeline could not complete this verification."
+    return "Verification", f"The pipeline could not complete this verification: {safe_message}"
 
 
 def _safe_report(result: dict, source_path: str) -> dict:
@@ -224,6 +234,7 @@ render_activity(activity_slot)
 
 if run and upload:
     st.session_state.stage_index = 1
+    st.session_state.stage_failed = False
     render_stages(stage_slot)
     def pipeline_progress(message: str, level: str = "INFO") -> None:
         update_stage(message)
@@ -251,7 +262,10 @@ if run and upload:
         pipeline_progress(f"Verification complete: {result.get('input_faces', 0)} face(s), {result.get('reverse_results_count', 0)} search result(s)")
     except Exception as exc:
         heading, message = _friendly_error(exc)
+        st.session_state.stage_failed = True
+        update_stage(f"{heading} failed")
         log_activity(f"{heading}: {message}", "ERROR")
+        render_stages(stage_slot)
         render_activity(activity_slot)
         st.error(f"{heading}: {message}")
     else:

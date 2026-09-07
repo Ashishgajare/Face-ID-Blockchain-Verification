@@ -268,8 +268,16 @@ def run_pipeline(
             "similarity": best.best_similarity,
             "matched": best.matched,
         }
+        progress("Creating verification record and SHA-256 hash")
         output["blockchain"] = _anchor_verified_match(image_path, best, threshold)
         progress(f"Verification result: {'match' if best.matched else 'no match'}")
+        if best.matched:
+            progress(
+                f"Polygon Amoy: {output['blockchain'].get('status', 'not attempted')}",
+                "CHAIN" if output["blockchain"].get("status") == "CONFIRMED" else "INFO",
+            )
+    else:
+        progress("No verified candidate; no further processing", "SAFE")
         output["verification_record"] = output["blockchain"].get("record")
         if output["blockchain"].get("record_hash"):
             output["verification_record_hash"] = output["blockchain"]["record_hash"]

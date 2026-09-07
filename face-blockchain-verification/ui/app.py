@@ -27,6 +27,8 @@ st.set_page_config(
 
 if "activity_log" not in st.session_state:
     st.session_state.activity_log = []
+if "stage_index" not in st.session_state:
+    st.session_state.stage_index = 0
 
 
 def log_activity(message: str, level: str = "INFO") -> None:
@@ -49,6 +51,32 @@ def render_activity(target) -> None:
     else:
         entries = '<div class="activity-entry"><span class="activity-time">--:--:--</span><span class="activity-level">IDLE</span><span>Ready for a source image.</span></div>'
     target.markdown(f'<div class="activity-log">{entries}</div>', unsafe_allow_html=True)
+
+
+def update_stage(message: str) -> None:
+    text = message.lower()
+    if "detect" in text:
+        st.session_state.stage_index = max(st.session_state.stage_index, 1)
+    if "embedding" in text:
+        st.session_state.stage_index = max(st.session_state.stage_index, 2)
+    if "search" in text or "result(s)" in text or "candidate(s)" in text:
+        st.session_state.stage_index = max(st.session_state.stage_index, 3)
+    if "compar" in text or "similarity" in text or "match" in text:
+        st.session_state.stage_index = max(st.session_state.stage_index, 4)
+    if "hash" in text or "record" in text:
+        st.session_state.stage_index = max(st.session_state.stage_index, 5)
+    if "polygon" in text or "blockchain" in text:
+        st.session_state.stage_index = max(st.session_state.stage_index, 6)
+
+
+def render_stages(target) -> None:
+    stages = ["Detect", "Embed", "Search", "Compare", "Hash", "Polygon"]
+    cells = []
+    for index, name in enumerate(stages, start=1):
+        state = "done" if index < st.session_state.stage_index else "active" if index == st.session_state.stage_index else "pending"
+        glyph = "✓" if state == "done" else str(index).zfill(2)
+        cells.append(f'<div class="stage {state}"><div class="stage-dot">{glyph}</div><div class="stage-name">{name}</div></div>')
+    target.markdown(f'<div class="stage-rail">{"".join(cells)}</div>', unsafe_allow_html=True)
 
 st.markdown(
     """
@@ -98,6 +126,14 @@ st.markdown(
     .activity-entry:last-child { border-bottom:0; }
     .activity-time,.activity-level { color:var(--muted); font-family:'DM Mono',monospace; font-size:.68rem; text-transform:uppercase; }
     .activity-level { color:var(--orange); }
+    .stage-rail { display:grid; grid-template-columns:repeat(6,1fr); gap:.45rem; margin:.4rem 0 1.4rem; }
+    .stage { display:grid; grid-template-columns:2rem 1fr; gap:.5rem; align-items:center; border-top:2px solid var(--line); padding-top:.55rem; opacity:.45; }
+    .stage.active { border-color:var(--orange); opacity:1; }
+    .stage.done { border-color:var(--acid); opacity:.9; }
+    .stage-dot { width:1.7rem; height:1.7rem; border-radius:50%; display:grid; place-items:center; background:#292929; color:var(--muted); font-family:'DM Mono',monospace; font-size:.62rem; }
+    .stage.active .stage-dot { background:var(--orange); color:var(--ink); box-shadow:0 0 0 .25rem rgba(255,91,36,.18); }
+    .stage.done .stage-dot { background:var(--acid); color:var(--ink); }
+    .stage-name { font-family:'DM Mono',monospace; text-transform:uppercase; font-size:.66rem; letter-spacing:.06em; }
     @media (max-width:800px) { .hero{grid-template-columns:1fr;min-height:46vh}.hero-mark{text-align:left;font-size:9rem}.metric-row{grid-template-columns:repeat(2,1fr)}.timeline{grid-template-columns:repeat(2,1fr)}.step:nth-child(2n){border-right:0} }
     </style>
     """,
@@ -181,11 +217,17 @@ st.markdown(
 )
 
 st.markdown('<div class="section-head"><div><div class="mono section-tag">Live / Activity</div><h2>What is<br>happening.</h2></div><div class="mono">Session only / safe events</div></div>', unsafe_allow_html=True)
+stage_slot = st.empty()
+render_stages(stage_slot)
 activity_slot = st.empty()
 render_activity(activity_slot)
 
 if run and upload:
+    st.session_state.stage_index = 1
+    render_stages(stage_slot)
     def pipeline_progress(message: str, level: str = "INFO") -> None:
+        update_stage(message)
+        render_stages(stage_slot)
         log_activity(message, level)
         render_activity(activity_slot)
 
@@ -210,6 +252,7 @@ if run and upload:
     except Exception as exc:
         heading, message = _friendly_error(exc)
         log_activity(f"{heading}: {message}", "ERROR")
+        render_activity(activity_slot)
         st.error(f"{heading}: {message}")
     else:
         best = result.get("best_candidate") or {}

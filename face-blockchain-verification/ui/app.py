@@ -25,6 +25,20 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+if "activity_log" not in st.session_state:
+    st.session_state.activity_log = []
+
+
+def log_activity(message: str, level: str = "INFO") -> None:
+    st.session_state.activity_log.append(
+        {
+            "time": datetime.now(timezone.utc).strftime("%H:%M:%S UTC"),
+            "level": level,
+            "message": message,
+        }
+    )
+    st.session_state.activity_log = st.session_state.activity_log[-20:]
+
 st.markdown(
     """
     <style>
@@ -68,6 +82,11 @@ st.markdown(
     .step-no { color:var(--orange); font-family:'DM Mono',monospace; }
     .step-name { margin-top:1.5rem; font-weight:600; }
     .footer { border-top:1px solid var(--line); margin-top:5rem; padding-top:1rem; color:var(--muted); display:flex; justify-content:space-between; }
+    .activity-log { border:1px solid var(--line); background:#181818; padding:1rem 1.2rem; margin-top:2rem; }
+    .activity-entry { display:grid; grid-template-columns:8rem 5rem 1fr; gap:1rem; padding:.55rem 0; border-bottom:1px solid rgba(242,238,228,.08); font-size:.84rem; }
+    .activity-entry:last-child { border-bottom:0; }
+    .activity-time,.activity-level { color:var(--muted); font-family:'DM Mono',monospace; font-size:.68rem; text-transform:uppercase; }
+    .activity-level { color:var(--orange); }
     @media (max-width:800px) { .hero{grid-template-columns:1fr;min-height:46vh}.hero-mark{text-align:left;font-size:9rem}.metric-row{grid-template-columns:repeat(2,1fr)}.timeline{grid-template-columns:repeat(2,1fr)}.step:nth-child(2n){border-right:0} }
     </style>
     """,
@@ -151,6 +170,7 @@ st.markdown(
 )
 
 if run and upload:
+    log_activity(f"Source image received: {Path(upload.name).suffix.lower() or 'image'}")
     suffix = Path(upload.name).suffix or ".jpg"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
         temp_file.write(upload.getbuffer())
@@ -162,8 +182,10 @@ if run and upload:
             progress.write("Comparing real candidate faces against the 0.65 gate")
             result = run_pipeline(temp_path, threshold=FACE_SIMILARITY_THRESHOLD, use_gpu=USE_GPU)
             progress.update(label="Verification complete", state="complete", expanded=False)
+        log_activity(f"Verification complete: {result.get('input_faces', 0)} face(s), {result.get('reverse_results_count', 0)} search result(s)")
     except Exception as exc:
         heading, message = _friendly_error(exc)
+        log_activity(f"{heading}: {message}", "ERROR")
         st.error(f"{heading}: {message}")
     else:
         best = result.get("best_candidate") or {}
@@ -203,6 +225,7 @@ if run and upload:
 
         st.markdown('<div class="section-head"><div><div class="mono section-tag">05 / Blockchain</div><h2>Leave a<br>receipt.</h2></div></div>', unsafe_allow_html=True)
         if blockchain.get("transaction_hash"):
+            log_activity("Polygon Amoy transaction confirmed", "CHAIN")
             explorer = blockchain.get("explorer_url")
             st.success("Polygon Amoy transaction confirmed.")
             st.write({"network": "Polygon Amoy", "contract": CONTRACT_ADDRESS, "block": blockchain.get("block_number"), "gas_used": blockchain.get("gas_used"), "getVerification": "PASS" if blockchain.get("record_verified") else "FAIL"})
@@ -210,11 +233,13 @@ if run and upload:
             if explorer:
                 st.link_button("Open transaction in Polygonscan", explorer)
         elif blockchain.get("status") == "FAILED":
+            log_activity("Polygon transaction failed; no confirmation claimed", "ERROR")
             st.error("Blockchain transaction failed. No confirmed record exists.")
             st.caption("The failure was returned by the configured Polygon Amoy client; no confirmation is claimed.")
         elif blockchain.get("status") == "NOT_CONFIGURED":
             st.warning("Blockchain is not configured for this verified result. No transaction was sent.")
         else:
+            log_activity("No verified match; blockchain submission skipped", "SAFE")
             st.info("Blockchain Status: NOT_ATTEMPTED. No verified match means no hash and no transaction.")
 
         report = _safe_report(result, temp_path)
@@ -222,10 +247,21 @@ if run and upload:
         report_dir.mkdir(exist_ok=True)
         report_path = report_dir / "verification_report.json"
         report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        log_activity("Sanitized verification report exported locally", "EXPORT")
         st.download_button("Export local JSON report", data=json.dumps(report, indent=2), file_name="verification_report.json", mime="application/json")
         with st.expander("Safe report fields"):
             st.json(report)
     finally:
         Path(temp_path).unlink(missing_ok=True)
+
+st.markdown('<div class="section-head"><div><div class="mono section-tag">Live / Activity</div><h2>What is<br>happening.</h2></div><div class="mono">Session only / safe events</div></div>', unsafe_allow_html=True)
+if st.session_state.activity_log:
+    entries = "".join(
+        f'<div class="activity-entry"><span class="activity-time">{item["time"]}</span><span class="activity-level">{item["level"]}</span><span>{item["message"]}</span></div>'
+        for item in reversed(st.session_state.activity_log)
+    )
+else:
+    entries = '<div class="activity-entry"><span class="activity-time">--:--:--</span><span class="activity-level">IDLE</span><span>Ready for a source image.</span></div>'
+st.markdown(f'<div class="activity-log">{entries}</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="footer"><span class="mono">LESS NOISE. MORE SIGNAL.</span><span class="mono">Milestone 3 / Final Verification Studio</span></div>', unsafe_allow_html=True)

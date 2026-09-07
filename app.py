@@ -1,5 +1,6 @@
 import os
 import re
+
 import serpapi
 
 from dotenv import load_dotenv
@@ -30,8 +31,8 @@ CONTRACT_ADDRESS = "0x99a70F91bfae2C9ad0ff808eb2465Eb85b8a0a55"
 
 CHAIN_ID = 11155111
 
-# Minimum face similarity required before accepting a match.
-# This is a demo safeguard, NOT a universal identity threshold.
+# Demo safeguard.
+# This is NOT a universal biometric identity threshold.
 MIN_FACE_SIMILARITY = 0.50
 
 
@@ -86,14 +87,15 @@ CONTRACT_ABI = [
 
 
 # ============================================================
-# URL CLEANING FUNCTION
+# URL CLEANING
 # ============================================================
 
 def clean_url(url):
     """
     Clean URLs returned by search engines.
+
     Handles normal URLs, Markdown URLs,
-    escaped URLs, and extra whitespace.
+    escaped URLs and extra whitespace.
     """
 
     if not url:
@@ -101,7 +103,7 @@ def clean_url(url):
 
     url = str(url).strip()
 
-    # Handle Markdown links:
+    # Extract URL from Markdown format:
     # [https://example.com](https://example.com)
     markdown_match = re.search(
         r"\]\((https?://[^)]+)\)",
@@ -111,7 +113,7 @@ def clean_url(url):
     if markdown_match:
         url = markdown_match.group(1)
 
-    # Extract the first normal URL if brackets/extra text exist
+    # Extract first normal URL
     bracket_match = re.search(
         r"(https?://[^\s\]]+)",
         url
@@ -120,13 +122,14 @@ def clean_url(url):
     if bracket_match:
         url = bracket_match.group(1)
 
-    # Remove trailing Markdown/HTML characters
+    # Remove trailing Markdown / HTML characters
     url = url.rstrip(")]}>\"'")
 
-    # Replace escaped characters
+    # Replace escaped slashes
     url = url.replace("\\/", "/")
 
     return url
+
 
 # ============================================================
 # MAIN FUNCTION
@@ -145,16 +148,11 @@ def main():
     print("\n[1] Checking input image...")
 
     if not os.path.exists(IMAGE_PATH):
-
         print("ERROR: Input image not found:")
         print(IMAGE_PATH)
-
         return
 
-    print(
-        "Input image:",
-        IMAGE_PATH
-    )
+    print("Input image:", IMAGE_PATH)
 
     # ========================================================
     # PHASE 2 - FACE DETECTION
@@ -162,22 +160,13 @@ def main():
 
     print("\n[2] Detecting face...")
 
-    input_faces = get_faces(
-        IMAGE_PATH
-    )
+    input_faces = get_faces(IMAGE_PATH)
 
     if not input_faces:
-
-        print(
-            "ERROR: No face detected in input image."
-        )
-
+        print("ERROR: No face detected in input image.")
         return
 
-    print(
-        "Faces detected:",
-        len(input_faces)
-    )
+    print("Faces detected:", len(input_faces))
 
     # Select largest detected face
     input_face = max(
@@ -196,16 +185,10 @@ def main():
     # PHASE 3 - GOOGLE LENS SEARCH
     # ========================================================
 
-    print(
-        "\n[3] Searching the web using Google Lens..."
-    )
+    print("\n[3] Searching the web using Google Lens...")
 
     if not SERPAPI_API_KEY:
-
-        print(
-            "ERROR: SERPAPI_API_KEY is missing from .env"
-        )
-
+        print("ERROR: SERPAPI_API_KEY is missing from .env")
         return
 
     client = serpapi.Client(
@@ -230,12 +213,8 @@ def main():
 
     except Exception as e:
 
-        print(
-            "ERROR during Google Lens search:"
-        )
-
+        print("ERROR during Google Lens search:")
         print(e)
-
         return
 
     visual_matches = results.get(
@@ -250,19 +229,14 @@ def main():
 
     if not visual_matches:
 
-        print(
-            "ERROR: No visual matches found."
-        )
-
+        print("ERROR: No visual matches found.")
         return
 
     # ========================================================
     # PHASE 4 - DOWNLOAD AND COMPARE CANDIDATES
     # ========================================================
 
-    print(
-        "\n[4] Comparing candidate images..."
-    )
+    print("\n[4] Comparing candidate images...")
 
     candidate_folder = "search/candidates"
 
@@ -301,7 +275,6 @@ def main():
             ""
         )
 
-        # Clean URL
         post_url = clean_url(
             raw_post_url
         )
@@ -384,33 +357,44 @@ def main():
         )
 
         # ----------------------------------------------------
-        # COMBINED SEARCH + FACE SCORE
+        # SEARCH RANK SCORE
         # ----------------------------------------------------
 
         search_score = 1 / rank
 
+        # Face similarity is the primary signal.
+        # Search ranking is used as a secondary signal.
+
         combined_score = (
-            0.70 * similarity
-            + 0.30 * search_score
+            0.85 * similarity
+            + 0.15 * search_score
         )
 
         match_results.append({
+
             "rank": rank,
+
             "title": title,
+
             "source": source,
+
             "post_url": post_url,
+
             "image_url": image_url,
+
             "face_similarity": similarity,
+
+            "search_score": search_score,
+
             "combined_score": combined_score
+
         })
 
     # ========================================================
     # PHASE 5 - CHECK WHETHER ANY MATCH EXISTS
     # ========================================================
 
-    print(
-        "\n[5] Selecting best match..."
-    )
+    print("\n[5] Selecting best match...")
 
     if not match_results:
 
@@ -420,11 +404,49 @@ def main():
 
         return
 
-    # Sort candidates by combined score
+    # ========================================================
+    # SORT BY COMBINED SCORE
+    # ========================================================
+
     match_results.sort(
         key=lambda x: x["combined_score"],
         reverse=True
     )
+
+    # ========================================================
+    # DISPLAY TOP CANDIDATES
+    # ========================================================
+
+    print("\n" + "=" * 70)
+    print("TOP CANDIDATE RESULTS")
+    print("=" * 70)
+
+    for position, candidate in enumerate(
+        match_results[:5],
+        start=1
+    ):
+
+        print(
+            f"\n{position}. {candidate['title']}"
+        )
+
+        print(
+            f"   Source: {candidate['source']}"
+        )
+
+        print(
+            f"   Search rank: {candidate['rank']}"
+        )
+
+        print(
+            f"   Face similarity: "
+            f"{candidate['face_similarity']:.4f}"
+        )
+
+        print(
+            f"   Combined score: "
+            f"{candidate['combined_score']:.4f}"
+        )
 
     best_match = match_results[0]
 
@@ -461,7 +483,7 @@ def main():
         )
 
         print(
-            "This prevents weak/random search results "
+            "This prevents weak or random search results "
             "from being recorded as verified matches."
         )
 
@@ -509,18 +531,18 @@ def main():
     )
 
     discovered_post = {
+
         "title": best_match["title"],
+
         "source": best_match["source"],
+
         "post_url": best_match["post_url"]
+
     }
 
-    print(
-        "\nDiscovered post:"
-    )
+    print("\nDiscovered post:")
 
-    print(
-        discovered_post
-    )
+    print(discovered_post)
 
     # ========================================================
     # PHASE 8 - SHA-256 HASH
@@ -622,10 +644,13 @@ def main():
     # ========================================================
 
     contract = w3.eth.contract(
+
         address=Web3.to_checksum_address(
             CONTRACT_ADDRESS
         ),
+
         abi=CONTRACT_ABI
+
     )
 
     print(
@@ -641,7 +666,6 @@ def main():
         "\n[9] Submitting hash to blockchain..."
     )
 
-    # Get pending nonce
     nonce = w3.eth.get_transaction_count(
         account.address,
         "pending"
@@ -652,7 +676,6 @@ def main():
         nonce
     )
 
-    # Get latest block
     latest_block = w3.eth.get_block(
         "latest"
     )
@@ -662,7 +685,6 @@ def main():
         w3.eth.gas_price
     )
 
-    # EIP-1559 gas settings
     max_priority_fee = w3.to_wei(
         1,
         "gwei"
@@ -691,31 +713,36 @@ def main():
         "Gwei"
     )
 
-    # Convert SHA-256 hex string to bytes32
+    # Convert SHA-256 hash to bytes32
     hash_bytes = bytes.fromhex(
         post_hash
     )
 
-    # Build blockchain transaction
     transaction = contract.functions.storeRecord(
         hash_bytes
     ).build_transaction({
+
         "from": account.address,
+
         "nonce": nonce,
+
         "chainId": CHAIN_ID,
+
         "gas": 100000,
+
         "maxFeePerGas": max_fee,
+
         "maxPriorityFeePerGas": max_priority_fee,
+
         "value": 0
+
     })
 
-    # Sign transaction
     signed_tx = w3.eth.account.sign_transaction(
         transaction,
         private_key=PRIVATE_KEY
     )
 
-    # Send transaction
     tx_hash = w3.eth.send_raw_transaction(
         signed_tx.raw_transaction
     )
@@ -739,9 +766,13 @@ def main():
     try:
 
         receipt = w3.eth.wait_for_transaction_receipt(
+
             tx_hash,
+
             timeout=300,
+
             poll_latency=5
+
         )
 
     except Exception as e:
@@ -806,7 +837,9 @@ def main():
     ).call()
 
     exists = verification[0]
+
     timestamp = verification[1]
+
     submitter = verification[2]
 
     print(
@@ -838,41 +871,25 @@ def main():
 
     if exists:
 
-        print(
-            "\nSUCCESS!"
-        )
+        print("\nSUCCESS!")
 
-        print(
-            "✓ Face detected"
-        )
+        print("✓ Face detected")
 
-        print(
-            "✓ Web search completed"
-        )
+        print("✓ Web search completed")
 
-        print(
-            "✓ Matching content discovered"
-        )
+        print("✓ Multiple candidates compared")
 
-        print(
-            "✓ Face similarity passed minimum threshold"
-        )
+        print("✓ Best candidate selected using face similarity")
 
-        print(
-            "✓ SHA-256 fingerprint generated"
-        )
+        print("✓ Face similarity passed minimum threshold")
 
-        print(
-            "✓ Hash stored on Ethereum Sepolia"
-        )
+        print("✓ SHA-256 fingerprint generated")
 
-        print(
-            "✓ Hash verified against blockchain record"
-        )
+        print("✓ Hash stored on Ethereum Sepolia")
 
-        print(
-            "\nTransaction hash:"
-        )
+        print("✓ Hash verified against blockchain record")
+
+        print("\nTransaction hash:")
 
         print(
             tx_hash.hex()
@@ -890,4 +907,4 @@ def main():
 # ============================================================
 
 if __name__ == "__main__":
-    main()
+    main()  

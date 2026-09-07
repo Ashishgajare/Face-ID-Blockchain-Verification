@@ -20,7 +20,7 @@ from verification.pipeline import run_pipeline  # noqa: E402
 
 
 st.set_page_config(
-    page_title="Face ID + Blockchain Verification",
+    page_title="TraceFace",
     page_icon="◈",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -87,61 +87,75 @@ st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
-    :root { --ink:#121212; --paper:#f2eee4; --orange:#ff5b24; --acid:#d8ff4f; --muted:#aaa69e; --line:rgba(242,238,228,.18); }
-    .stApp { background:var(--ink); color:var(--paper); }
-    .block-container { max-width:1440px; padding:1.8rem 4vw 4rem; }
-    header[data-testid="stHeader"] { background:transparent; }
+    :root { --ink:#fff15a; --paper:#075c36; --canvas:#075c36; --green:#fff15a; --green-soft:#064a2c; --muted:#d8df91; --line:rgba(255,241,90,.55); --orange:#ff2f92; --hot:#ff2f92; }
+    .stApp { background:var(--canvas); color:var(--ink); }
+    .block-container { max-width:1440px; padding:1rem 2rem 3rem; }
+    header[data-testid="stHeader"] { background:rgba(7,92,54,.96); border-bottom:1px solid var(--line); }
     [data-testid="stToolbar"] { visibility:hidden; }
     h1,h2,h3,p,label,button,div { font-family:'Space Grotesk',sans-serif; }
-    h1,h2,h3,p { color:var(--paper); }
-    h1 { font-size:clamp(3.8rem,9vw,9rem); line-height:.86; letter-spacing:-.06em; font-weight:700; margin:0; }
-    h2 { font-size:clamp(2rem,5vw,4.8rem); line-height:.9; letter-spacing:-.05em; margin:0; }
-    h3 { letter-spacing:-.03em; }
-    .mono { font-family:'DM Mono',monospace; text-transform:uppercase; letter-spacing:.08em; font-size:.72rem; }
-    .topline { display:flex; justify-content:space-between; border-bottom:1px solid var(--line); padding-bottom:.7rem; margin-bottom:2.2rem; color:var(--muted); }
-    .hero { min-height:42vh; display:grid; grid-template-columns:1.2fr .8fr; gap:2rem; align-items:end; padding-bottom:2rem; border-bottom:1px solid var(--line); }
-    .hero-kicker,.section-tag { color:var(--orange); }
-    .hero-copy { color:var(--muted); max-width:31rem; font-size:1.05rem; line-height:1.4; }
-    .hero-mark { color:var(--orange); font-size:clamp(8rem,21vw,22rem); line-height:.55; text-align:right; letter-spacing:-.14em; }
-    .ticker { overflow:hidden; white-space:nowrap; border-bottom:1px solid var(--line); color:var(--acid); padding:.6rem 0; margin-bottom:2.2rem; font-family:'DM Mono',monospace; font-size:.78rem; }
-    .section-head { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin:2.5rem 0 1rem; }
-    .panel { background:var(--paper); color:var(--ink); padding:1.3rem; min-height:100%; }
+    h1,h2,h3,p { color:var(--ink); }
+    h1 { font-family:Georgia,'Times New Roman',serif; font-size:clamp(4rem,10vw,8rem); line-height:.86; letter-spacing:-.06em; font-weight:700; margin:0; text-align:center; text-transform:none; }
+    h2 { font-family:Georgia,'Times New Roman',serif; font-size:clamp(1.8rem,4vw,3.2rem); line-height:.95; letter-spacing:-.04em; margin:0; }
+    h3 { letter-spacing:-.02em; }
+    .mono { font-family:'DM Mono',monospace; text-transform:uppercase; letter-spacing:.06em; font-size:.78rem; }
+    .topline { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); padding:.8rem 0; margin-bottom:1.3rem; color:var(--ink); }
+    .hero { display:flex; flex-direction:column; align-items:center; gap:1.2rem; padding:3rem 0 3.8rem; border-bottom:1px solid var(--line); position:relative; }
+    .hero-kicker,.section-tag { color:var(--green); }
+    .hero-copy { color:#f4f6bf; max-width:42rem; font-size:1.05rem; line-height:1.55; margin:.8rem 0 0; text-align:center; }
+    .hero-mark { color:var(--hot); font-size:clamp(5rem,10vw,9rem); line-height:.55; text-align:center; letter-spacing:-.14em; position:absolute; top:42%; right:12%; transform:rotate(-8deg); }
+    .ticker { overflow:hidden; white-space:nowrap; border-bottom:1px solid var(--line); color:var(--ink); padding:.55rem 0; margin-bottom:1.5rem; font-family:'DM Mono',monospace; font-size:.68rem; }
+    .section-head { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin:1.4rem 0 .65rem; }
+    .workspace-rail { background:#064a2c; border:1px solid var(--line); padding:1rem; min-height:100%; }
+    .rail-title { color:var(--hot); font-family:'DM Mono',monospace; font-size:.68rem; text-transform:uppercase; letter-spacing:.1em; margin-bottom:1rem; }
+    .rail-item { border-left:2px solid transparent; padding:.7rem .6rem; color:var(--muted); font-family:'DM Mono',monospace; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; }
+    .rail-item.active { border-left-color:var(--hot); color:var(--ink); background:rgba(255,241,90,.08); }
+    .inspector { background:#064a2c; border:1px solid var(--line); padding:1rem; min-height:100%; }
+    .inspector-row { display:flex; justify-content:space-between; gap:.5rem; border-bottom:1px solid rgba(255,241,90,.2); padding:.65rem 0; font-family:'DM Mono',monospace; font-size:.68rem; }
+    .inspector-row span:first-child { color:var(--muted); }
+    .inspector-row span:last-child { color:var(--ink); text-align:right; }
+    .panel { background:#f8ed8b; color:#075c36; padding:1.2rem; min-height:100%; border:2px solid var(--ink); border-radius:0; box-shadow:6px 6px 0 var(--ink); }
     .panel * { color:var(--ink) !important; }
-    .panel-dark { border:1px solid var(--line); padding:1.3rem; min-height:100%; }
-    .panel-label { font-family:'DM Mono',monospace; font-size:.7rem; text-transform:uppercase; color:var(--orange) !important; letter-spacing:.1em; }
-    .panel-value { font-size:3rem; font-weight:700; line-height:.9; margin:1.5rem 0 .6rem; }
-    [data-testid="stFileUploaderDropzone"] { background:transparent; border:1px dashed rgba(18,18,18,.35); padding:1.3rem; }
+    .panel-dark { background:#064a2c; border:1px solid var(--line); border-radius:0; padding:1.2rem; min-height:100%; box-shadow:4px 4px 0 rgba(0,0,0,.16); }
+    .panel-dark * { color:var(--ink) !important; }
+    .panel-label { font-family:'DM Mono',monospace; font-size:.68rem; text-transform:uppercase; color:var(--hot) !important; letter-spacing:.1em; }
+    .panel-value { font-size:2.6rem; font-weight:700; line-height:.95; margin:1.1rem 0 .6rem; }
+    [data-testid="stFileUploaderDropzone"] { background:#fff8b5; border:2px dashed #075c36; padding:1.1rem; border-radius:0; }
     [data-testid="stFileUploaderDropzoneInstructions"] { color:var(--ink); }
-    .stButton > button { background:var(--orange); border:0; border-radius:0; color:var(--ink); font-family:'DM Mono',monospace; text-transform:uppercase; letter-spacing:.08em; font-weight:500; padding:.8rem 1.2rem; }
-    .stButton > button:hover { background:var(--acid); color:var(--ink); }
-    .metric-row { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line); margin-top:1.5rem; }
-    .metric { background:var(--ink); padding:.85rem; min-height:6.2rem; }
-    .metric .value { font-size:2rem; font-weight:600; margin-top:1rem; }
-    .status { border-left:5px solid var(--orange); padding:1rem 1.2rem; background:#211b18; margin-top:1.2rem; }
-    .status.good { border-color:var(--acid); }
+    .stButton > button { background:var(--hot); border:2px solid var(--ink); border-radius:0; color:#fff; font-family:'DM Mono',monospace; text-transform:uppercase; letter-spacing:.06em; font-weight:500; padding:.72rem 1rem; box-shadow:4px 4px 0 var(--ink); }
+    .stButton > button:hover { background:#ff63b0; color:#fff; }
+    .metric-row { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line); margin-top:1rem; border:1px solid var(--line); border-radius:.6rem; overflow:hidden; }
+    .metric { background:#064a2c; padding:.85rem; min-height:5.5rem; }
+    .metric .value { font-size:1.8rem; font-weight:600; margin-top:.75rem; }
+    .status { border-left:4px solid var(--hot); padding:.85rem 1rem; background:var(--green-soft); margin-top:1rem; border-radius:0; }
+    .status.good { border-color:var(--green); }
     .status p { margin:.25rem 0; }
-    .timeline { display:grid; grid-template-columns:repeat(6,1fr); margin:1rem 0 2.4rem; border-top:1px solid var(--line); }
-    .step { padding:.75rem .7rem 0 0; border-right:1px solid var(--line); min-height:6rem; }
+    .timeline { display:grid; grid-template-columns:repeat(6,1fr); margin:1rem 0 1.5rem; border:1px solid var(--line); background:#064a2c; border-radius:0; padding:1rem; box-shadow:4px 4px 0 rgba(0,0,0,.16); }
+    .step { padding:.35rem .7rem 0 0; border-right:1px solid var(--line); min-height:4.8rem; }
     .step:last-child { border-right:0; }
     .step-no { color:var(--orange); font-family:'DM Mono',monospace; }
-    .step-name { margin-top:1.5rem; font-weight:600; }
+    .step-name { margin-top:1.1rem; font-weight:600; font-size:.95rem; color:var(--ink); }
     .footer { border-top:1px solid var(--line); margin-top:5rem; padding-top:1rem; color:var(--muted); display:flex; justify-content:space-between; }
-    .activity-log { border:1px solid var(--line); background:#181818; padding:.65rem 1rem; margin-top:.5rem; max-height:14rem; overflow-y:auto; }
-    .activity-entry { display:grid; grid-template-columns:8rem 5rem 1fr; gap:1rem; padding:.38rem 0; border-bottom:1px solid rgba(242,238,228,.08); font-size:.8rem; }
+    .activity-log { border:1px solid var(--line); background:#064a2c; border-radius:0; padding:.65rem 1rem; margin-top:.5rem; max-height:14rem; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,.14); }
+    .activity-entry { display:grid; grid-template-columns:8rem 5rem 1fr; gap:1rem; padding:.5rem 0; border-bottom:1px solid rgba(255,241,90,.18); font-size:.88rem; line-height:1.35; }
     .activity-entry:last-child { border-bottom:0; }
-    .activity-time,.activity-level { color:var(--muted); font-family:'DM Mono',monospace; font-size:.68rem; text-transform:uppercase; }
-    .activity-level { color:var(--orange); }
+    .activity-time,.activity-level { color:#e8edaa; font-family:'DM Mono',monospace; font-size:.72rem; text-transform:uppercase; }
+    .activity-level { color:var(--green); }
     .stage-rail { display:grid; grid-template-columns:repeat(6,1fr); gap:.45rem; margin:.4rem 0 1.4rem; }
-    .stage { display:grid; grid-template-columns:2rem 1fr; gap:.5rem; align-items:center; border-top:2px solid var(--line); padding-top:.55rem; opacity:.45; }
+    .stage { display:grid; grid-template-columns:2rem 1fr; gap:.5rem; align-items:center; border-top:2px solid var(--line); padding-top:.55rem; opacity:.55; }
     .stage.active { border-color:var(--orange); opacity:1; }
     .stage.done { border-color:var(--acid); opacity:.9; }
     .stage.failed { border-color:#ff4d5e; opacity:1; }
     .stage-dot { width:1.7rem; height:1.7rem; border-radius:50%; display:grid; place-items:center; background:#292929; color:var(--muted); font-family:'DM Mono',monospace; font-size:.62rem; }
-    .stage.active .stage-dot { background:var(--orange); color:var(--ink); box-shadow:0 0 0 .25rem rgba(255,91,36,.18); }
-    .stage.done .stage-dot { background:var(--acid); color:var(--ink); }
-    .stage.failed .stage-dot { background:#ff4d5e; color:var(--ink); }
-    .stage-name { font-family:'DM Mono',monospace; text-transform:uppercase; font-size:.66rem; letter-spacing:.06em; }
-    @media (max-width:800px) { .hero{grid-template-columns:1fr;min-height:46vh}.hero-mark{text-align:left;font-size:9rem}.metric-row{grid-template-columns:repeat(2,1fr)}.timeline{grid-template-columns:repeat(2,1fr)}.step:nth-child(2n){border-right:0} }
+    .stage.active .stage-dot { background:var(--hot); color:#fff; box-shadow:0 0 0 .25rem rgba(255,47,146,.2); }
+    .stage.done .stage-dot { background:var(--ink); color:#075c36; }
+    .stage.failed .stage-dot { background:#ffb4c8; color:#7d1238; }
+    .stage-name { font-family:'DM Mono',monospace; text-transform:uppercase; font-size:.75rem; letter-spacing:.05em; color:var(--ink); }
+    .stMarkdown p, .stCaption, [data-testid="stFileUploaderDropzoneInstructions"] { line-height:1.45; }
+    .stCaption { color:#e8edaa !important; }
+    .stAlert p { color:var(--ink) !important; }
+    .stAlert { border-radius:.6rem; }
+    @media (max-width:1100px) { .workspace-rail,.inspector { min-height:auto; } }
+    @media (max-width:800px) { .hero-mark{right:4%;font-size:6rem}.metric-row{grid-template-columns:repeat(2,1fr)}.timeline{grid-template-columns:repeat(2,1fr)}.step:nth-child(2n){border-right:0} }
     </style>
     """,
     unsafe_allow_html=True,
@@ -199,32 +213,55 @@ def _safe_report(result: dict, source_path: str) -> dict:
 
 st.markdown(
     """
-    <div class="topline"><span class="mono">Face ID + Blockchain Verification</span><span class="mono">Studio 03 / Polygon Amoy</span></div>
-    <section class="hero"><div><div class="mono hero-kicker">Identity, with receipts.</div><h1>READ<br>THE<br>SIGNAL.</h1><p class="hero-copy">A visual verification studio for finding, comparing, and sealing evidence records on-chain. Similarity is evidence, not identity proof.</p></div><div class="hero-mark">◈</div></section>
+    <div class="topline"><span class="mono">TraceFace / Verification Studio</span><span class="mono">AMOY 80002&nbsp;&nbsp; · &nbsp;&nbsp;LIVE</span></div>
+    <section class="hero"><div><div class="mono hero-kicker">Identity, with receipts.</div><h1>TraceFace</h1><p class="hero-copy">A live visual verification studio for finding, comparing, and sealing evidence records on-chain. Similarity is evidence, not identity proof.</p></div><div class="hero-mark">✳</div></section>
     <div class="ticker">LIVE VERIFICATION / FACE DETECTION / REVERSE SEARCH / ARCFACE / SHA-256 / POLYGON AMOY / LIVE VERIFICATION /</div>
+    <div class="section-head"><div><div class="mono section-tag">Evidence pipeline</div><h2>Six steps to<br>the receipt.</h2></div><div class="mono">Production gate / 0.65</div></div>
+    <div class="timeline"><div class="step"><div class="step-no">01</div><div class="step-name">Detect</div><div class="mono">Face signal</div></div><div class="step"><div class="step-no">02</div><div class="step-name">Embed</div><div class="mono">ArcFace vector</div></div><div class="step"><div class="step-no">03</div><div class="step-name">Search</div><div class="mono">SerpApi Lens</div></div><div class="step"><div class="step-no">04</div><div class="step-name">Compare</div><div class="mono">Similarity gate</div></div><div class="step"><div class="step-no">05</div><div class="step-name">Hash</div><div class="mono">Canonical JSON</div></div><div class="step"><div class="step-no">06</div><div class="step-name">Anchor</div><div class="mono">Polygon Amoy</div></div></div>
     <div class="section-head"><div><div class="mono section-tag">01 / Input</div><h2>Bring the<br>evidence.</h2></div><div class="mono">One face. One source image.</div></div>
     """,
     unsafe_allow_html=True,
 )
 
-left, right = st.columns([1.15, .85], gap="large")
-with left:
+nav, center, inspector = st.columns([.2, .58, .22], gap="medium")
+with nav:
+    st.markdown(
+        """
+        <div class="workspace-rail">
+          <div class="rail-title">TraceFace / Workspace</div>
+          <div class="rail-item active">01 / Verify</div>
+          <div class="rail-item">02 / Sources</div>
+          <div class="rail-item">03 / Audit trail</div>
+          <div class="rail-item">04 / Network</div>
+          <div style="height:1rem"></div>
+          <div class="mono" style="color:var(--muted)">Production mode<br>Gate 0.65<br>Polygon Amoy</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+with center:
     st.markdown('<div class="panel"><div class="panel-label">Drop zone / source image</div>', unsafe_allow_html=True)
     upload = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png", "webp"], label_visibility="collapsed")
     st.markdown("</div>", unsafe_allow_html=True)
     if upload:
         st.image(upload, caption=f"SOURCE / {upload.name}", use_container_width=True)
-with right:
+with inspector:
+    st.markdown(
+        f"""
+        <div class="inspector">
+          <div class="panel-label">Forensic inspector</div>
+          <div class="inspector-row"><span>Protocol</span><span>Production</span></div>
+          <div class="inspector-row"><span>Face model</span><span>ArcFace</span></div>
+          <div class="inspector-row"><span>Search</span><span>SerpApi Lens</span></div>
+          <div class="inspector-row"><span>Threshold</span><span>{FACE_SIMILARITY_THRESHOLD:.2f}</span></div>
+          <div class="inspector-row"><span>Network</span><span>Amoy / 80002</span></div>
+          <div class="inspector-row"><span>Biometrics</span><span>Off-chain only</span></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     st.markdown(f'<div class="panel-dark"><div class="panel-label">Production protocol</div><div class="panel-value">{FACE_SIMILARITY_THRESHOLD:.2f}</div><p>Similarity threshold. Production mode only.</p><div class="mono" style="margin-top:2rem;color:#aaa69e">No match. No hash. No transaction.</div></div>', unsafe_allow_html=True)
     run = st.button("Run Verification", type="primary", use_container_width=True, disabled=upload is None)
-
-st.markdown(
-    """
-    <div class="section-head"><div><div class="mono section-tag">02 / Sequence</div><h2>The route<br>to proof.</h2></div></div>
-    <div class="timeline"><div class="step"><div class="step-no">01</div><div class="step-name">Detect</div><div class="mono">Face signal</div></div><div class="step"><div class="step-no">02</div><div class="step-name">Embed</div><div class="mono">ArcFace vector</div></div><div class="step"><div class="step-no">03</div><div class="step-name">Search</div><div class="mono">Google Lens via SerpApi</div></div><div class="step"><div class="step-no">04</div><div class="step-name">Compare</div><div class="mono">Similarity gate</div></div><div class="step"><div class="step-no">05</div><div class="step-name">Hash</div><div class="mono">Canonical JSON</div></div><div class="step"><div class="step-no">06</div><div class="step-name">Anchor</div><div class="mono">Polygon Amoy</div></div></div>
-    """,
-    unsafe_allow_html=True,
-)
 
 st.markdown('<div class="section-head"><div><div class="mono section-tag">Live / Activity</div><h2>What is<br>happening.</h2></div><div class="mono">Session only / safe events</div></div>', unsafe_allow_html=True)
 stage_slot = st.empty()

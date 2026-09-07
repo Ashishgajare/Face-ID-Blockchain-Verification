@@ -225,6 +225,7 @@ def run_pipeline(
 
     output = {
         "input_faces": det_result.face_count,
+        "input_face_bbox": det_result.faces[0].bbox if det_result.face_count == 1 else None,
         "reverse_results_count": len(parsed),
         "social_candidates_count": len(social_candidates),
         "best_candidate": None,

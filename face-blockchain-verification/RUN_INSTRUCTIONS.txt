@@ -163,3 +163,19 @@ The Milestone 2 CLI sends a transaction only when a real social candidate is fou
 After a confirmed transaction, verify it at:
 
 https://amoy.polygonscan.com/tx/YOUR_TRANSACTION_HASH
+
+14. Milestone 3 Verification Studio
+
+Install the UI dependency in fbv:
+
+python -m pip install -r requirements.txt
+
+Start the themed local interface:
+
+streamlit run ui/app.py
+
+Then open the local URL shown by Streamlit, usually:
+
+http://localhost:8501
+
+Upload an image and select Run verification. The interface uses the normal production threshold of 0.65. It does not use development test mode.

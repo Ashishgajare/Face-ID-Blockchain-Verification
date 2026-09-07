@@ -103,6 +103,32 @@ python dotenv
 
 Used to securely load API keys, blockchain RPC URLs and wallet credentials from environment variables.
 
+Wallets, RPC Providers and APIs
+
+TraceFace uses the following services during the blockchain and reverse-search workflow:
+
+MetaMask wallet
+
+Used to create and manage the Ethereum wallet used for the project. The wallet can be funded with Sepolia test ETH and its private key is supplied to the local application through the protected `.env` file for signing transactions. The private key must never be committed to GitHub or shared publicly.
+
+Alchemy
+
+Used as an Ethereum RPC provider option for connecting the application to the Sepolia testnet. An Alchemy Sepolia endpoint can be placed in `SEPOLIA_RPC_URL`.
+
+Infura
+
+Used as another Ethereum RPC provider option for connecting to Sepolia. An Infura Sepolia endpoint can also be placed in `SEPOLIA_RPC_URL`.
+
+Ethereum Sepolia
+
+Used as the test blockchain network where TraceFace stores and verifies SHA-256 record hashes. Sepolia is used instead of Ethereum mainnet so the project can be tested without spending real ETH.
+
+SerpApi
+
+Used to access Google Lens reverse-image search. SerpApi receives the uploaded image, returns visual matches and source-page URLs, and supplies the candidate results that TraceFace ranks with face similarity.
+
+The application uses one RPC endpoint at a time. Alchemy and Infura are interchangeable provider options; MetaMask remains the wallet-management interface, while Web3.py uses the configured RPC endpoint to communicate with Sepolia.
+
 Project Structure
 
 traceface/

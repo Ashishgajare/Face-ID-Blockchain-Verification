@@ -54,4 +54,5 @@ typing_extensions==4.16.0
 urllib3==2.7.0
 web3==8.0.0
 websockets==17.1
+streamlit==1.41.1
 yarl==1.24.5

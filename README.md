@@ -2,7 +2,9 @@ TraceFace
 
 Face Identification and Blockchain Verification
 
-TraceFace is an end to end system that takes a face image as input, searches the web for visually similar content, identifies the most likely matching post using face similarity, and records the discovered information on the Ethereum Sepolia blockchain.
+TraceFace is an end to end system that takes a face image as input, searches the web for visually similar content, identifies the most likely matching post using face similarity, and records a cryptographic fingerprint on the Ethereum Sepolia blockchain.
+
+The project now includes a Streamlit verification studio with a green and yellow dashboard design. The UI displays the submitted photo, lets the user search for the highest face match, provides links to the matching post and image, and supports anchoring the uploaded-photo record on Sepolia.
 
 The main goal of the project is to demonstrate how face matching, reverse image search, cryptographic hashing, and blockchain verification can work together in a single pipeline.
 
@@ -10,7 +12,7 @@ What TraceFace Does
 
 TraceFace follows this process:
 
-The user provides a face image.
+The user provides a face image through the command line pipeline or Streamlit UI.
 The system detects the face using InsightFace.
 A 512 dimensional face embedding is generated.
 The input image is sent to Google Lens through SerpApi for reverse image search.
@@ -18,8 +20,9 @@ Google Lens returns visually similar images and web results.
 Candidate images are downloaded and their faces are detected.
 The faces in the candidate images are compared with the input face using cosine similarity.
 The best matching result is selected.
-Information about the discovered post is converted into a SHA 256 hash.
-The hash is stored on the Ethereum Sepolia blockchain.
+The UI exposes the highest-match post URL and direct image URL.
+The discovered record or uploaded-photo fingerprint is converted into a SHA 256 hash.
+The hash can be stored on the Ethereum Sepolia blockchain from the UI or CLI flow.
 The same information can later be hashed again and compared with the blockchain record.
 If the hashes match, the original record has not been modified.
 If the hashes are different, the system detects that the data has been changed.
@@ -115,6 +118,9 @@ traceface/
 │   ├── __init__.py
 │   ├── reverse_search.py
 │   └── candidate_matcher.py
+│
+├── ui/
+│   └── app.py
 │
 ├── blockchain/
 │   ├── __init__.py
@@ -244,6 +250,33 @@ The verifyRecord function checks whether the hash exists and returns the timesta
 
 An event is also emitted whenever a record is stored.
 
+Streamlit Verification Studio
+
+The Streamlit dashboard is implemented in `ui/app.py`. It provides:
+
+- A green and yellow verification-studio interface.
+- Face-image upload and an on-screen preview of the submitted photo.
+- A pipeline status rail for detection, embedding, search, matching, hashing and blockchain steps.
+- A `Find highest match` action that compares returned candidate faces.
+- An `Open Post` link to the highest-scoring source page.
+- An `Open Matched Image` link to the candidate image URL.
+- Photo SHA-256 and record-hash display.
+- An `Anchor on Sepolia` action with the confirmed transaction hash and Etherscan link.
+
+Start the dashboard with:
+
+```bash
+python -m streamlit run ui/app.py --server.address 127.0.0.1 --server.port 8502
+```
+
+Then open `http://127.0.0.1:8502` in a browser. If that port is already in use, choose another available port.
+
+The UI requires `SERPAPI_API_KEY` for reverse search and `SEPOLIA_RPC_URL` plus `PRIVATE_KEY` for blockchain anchoring. The UI computes the photo fingerprint locally before sending only the hash record to the contract.
+
+Social Media Detection
+
+The `search/social_filter.py` module filters reverse-search results by supported social domains, including Instagram, Facebook, X, Twitter, LinkedIn, YouTube, TikTok and Reddit. It returns the detected platform, source URL, title and image URL so social candidates can be shown alongside the other search results.
+
 Tamper Detection
 
 One of the main purposes of using blockchain in TraceFace is to demonstrate tamper detection.
@@ -335,9 +368,13 @@ source venv/bin/activate
 
 Then run:
 
-python3 app.py
+python app.py
 
-The program will run the complete pipeline.
+The command-line program will run the complete pipeline. For the visual dashboard, run:
+
+python -m streamlit run ui/app.py --server.address 127.0.0.1 --server.port 8502
+
+In the dashboard, upload a face image and select `Run TraceFace`. The submitted photo remains visible in the results area. Select `Find highest match` to compare candidate faces and reveal the source post and matched-image links. Select `Anchor on Sepolia` to hash the uploaded-photo record, submit it to the deployed contract, and verify the stored record.
 
 It will detect the face, perform the reverse image search, analyse candidate images, select the best result, generate the SHA 256 hash, store the hash on the blockchain and verify the record.
 

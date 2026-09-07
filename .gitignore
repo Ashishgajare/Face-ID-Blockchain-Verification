@@ -7,3 +7,4 @@ __pycache__/
 test_images/*
 screenshots/*
 search/candidates/*
+tmp_ui_uploads/

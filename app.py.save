@@ -1,0 +1,334 @@
+cd ~/Documents/traceface
+source venv/bin/activate
+python3 app.pycd ~/Documents/traceface
+source venv/bin/activate
+python3 app.pycd ~/Documents/traceface
+source venv/bin/activate
+python3 app.pycd ~/Documents/traceface
+source venv/bin/activate
+python3 app.pycd ~/Documents/traceface
+source venv/bin/activate
+python3 app.pycd ~/Documents/traceface
+source venv/bin/activate
+python3 app.pycd ~/Documents/traceface
+source venv/bin/activate
+python3 app.py
+import os
+import json
+import hashlib
+
+from dotenv import load_dotenv
+from web3 import Web3
+
+from face.detector import FaceDetector
+from face.matcher import FaceMatcher
+from search.reverse_search import ReverseSearcher
+from search.candidate_matcher import CandidateMatcher
+
+
+# ============================================
+# CONFIGURATION
+# ============================================
+
+load_dotenv()
+
+IMAGE_PATH = "test_images/person_compressed.jpg"
+
+CONTRACT_ADDRESS = "0x99a70F91bfae2C9ad0ff808eb2465Eb85b8a0a55"
+
+RPC_URL = os.getenv("SEPOLIA_RPC_URL")
+PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+
+CHAIN_ID = 11155111
+
+
+# ============================================
+# BLOCKCHAIN ABI
+# ============================================
+
+CONTRACT_ABI = [
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "hash",
+                "type": "bytes32"
+            }
+        ],
+        "name": "storeRecord",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "hash",
+                "type": "bytes32"
+            }
+        ],
+        "name": "verifyRecord",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "exists",
+                "type": "bool"
+            },
+            {
+                "internalType": "uint256",
+                "name": "timestamp",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "submitter",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    }
+]
+
+
+# ============================================
+# SHA-256
+# ============================================
+
+def calculate_record_hash(record):
+
+    canonical_record = json.dumps(
+        record,
+        sort_keys=True,
+        separators=(",", ":")
+    )
+
+    return hashlib.sha256(
+        canonical_record.encode("utf-8")
+    ).hexdigest()
+
+
+# ============================================
+# BANNER
+# ============================================
+
+print("\n")
+print("==============================================")
+print("              TRACEFACE")
+print("   Face Identification & Blockchain Verify")
+print("==============================================")
+print()
+
+
+# ============================================
+# PHASE 1 — FACE DETECTION
+# ============================================
+
+print("[1/7] Detecting face...")
+
+detector = FaceDetector()
+
+image, faces = detector.detect_faces(IMAGE_PATH)
+
+if not faces:
+    raise ValueError("No face detected in input image.")
+
+print("      ✓ Face detected")
+print(f"      Faces found: {len(faces)}")
+
+
+# ============================================
+# PHASE 2 — FACE ENCODING
+# ============================================
+
+print("\n[2/7] Creating face embedding...")
+
+matcher = FaceMatcher()
+
+input_embedding = matcher.get_embedding(
+    image,
+    faces[0]
+)
+
+print("      ✓ Face encoded")
+print(f"      Embedding shape: {input_embedding.shape}")
+
+
+# ============================================
+# PHASE 3 — WEB SEARCH
+# ============================================
+
+print("\n[3/7] Searching the web...")
+
+searcher = ReverseSearcher()
+
+search_results = searcher.search(IMAGE_PATH)
+
+print("      ✓ Google Lens search completed")
+print(f"      Results found: {len(search_results)}")
+
+
+# ============================================
+# PHASE 4 — CANDIDATE MATCHING
+# ============================================
+
+print("\n[4/7] Comparing candidate faces...")
+
+candidate_matcher = CandidateMatcher()
+
+results = candidate_matcher.match_candidates(
+    IMAGE_PATH,
+    search_results
+)
+
+if not results:
+    raise ValueError("No matching candidates found.")
+
+best_match = results[0]
+
+print("      ✓ Candidate comparison complete")
+
+
+# ============================================
+# PHASE 5 — DISCOVERED POST
+# ============================================
+
+print("\n[5/7] Selecting best matching post...")
+
+discovered_post = {
+    "title": best_match["title"],
+    "source": best_match["source"],
+    "post_url": best_match["link"]
+}
+
+print("\n      DISCOVERED POST")
+print("      ------------------------------")
+print(f"      Title: {discovered_post['title']}")
+print(f"      Source: {discovered_post['source']}")
+print(f"      URL: {discovered_post['post_url']}")
+
+if "face_similarity" in best_match:
+    print(f"      Face similarity: {best_match['face_similarity']:.4f}")
+
+
+# ============================================
+# PHASE 6 — SHA-256
+# ============================================
+
+print("\n[6/7] Creating SHA-256 fingerprint...")
+
+record_hash = calculate_record_hash(
+    discovered_post
+)
+
+print("      ✓ SHA-256 generated")
+print(f"      Hash: {record_hash}")
+
+
+# ============================================
+# PHASE 7 — BLOCKCHAIN
+# ============================================
+
+print("\n[7/7] Recording fingerprint on blockchain...")
+
+if not RPC_URL:
+    raise ValueError("SEPOLIA_RPC_URL missing from .env")
+
+if not PRIVATE_KEY:
+    raise ValueError("PRIVATE_KEY missing from .env")
+
+
+w3 = Web3(
+    Web3.HTTPProvider(RPC_URL)
+)
+
+if not w3.is_connected():
+    raise ConnectionError("Could not connect to Sepolia.")
+
+
+account = w3.eth.account.from_key(
+    PRIVATE_KEY
+)
+
+contract = w3.eth.contract(
+    address=Web3.to_checksum_address(
+        CONTRACT_ADDRESS
+    ),
+    abi=CONTRACT_ABI
+)
+
+hash_bytes = bytes.fromhex(record_hash)
+
+nonce = w3.eth.get_transaction_count(
+    account.address
+)
+
+transaction = contract.functions.storeRecord(
+    hash_bytes
+).build_transaction({
+    "from": account.address,
+    "nonce": nonce,
+    "chainId": CHAIN_ID,
+    "gas": 200000,
+    "gasPrice": w3.eth.gas_price,
+    "value": 0
+})
+
+
+signed = w3.eth.account.sign_transaction(
+    transaction,
+    PRIVATE_KEY
+)
+
+tx_hash = w3.eth.send_raw_transaction(
+    signed.raw_transaction
+)
+
+print("      Transaction sent")
+print(f"      TX: {tx_hash.hex()}")
+
+print("      Waiting for confirmation...")
+
+receipt = w3.eth.wait_for_transaction_receipt(
+    tx_hash
+)
+
+print("      ✓ Blockchain transaction confirmed")
+print(f"      Block: {receipt.blockNumber}")
+
+
+# ============================================
+# VERIFY
+# ============================================
+
+print("\n")
+print("==============================================")
+print("        BLOCKCHAIN VERIFICATION")
+print("==============================================")
+
+exists, timestamp, submitter = contract.functions.verifyRecord(
+    hash_bytes
+).call()
+
+print(f"\nHash exists on blockchain: {exists}")
+print(f"Timestamp: {timestamp}")
+print(f"Submitter: {submitter}")
+
+
+# ============================================
+# FINAL RESULT
+# ============================================
+
+print("\n")
+print("==============================================")
+
+if exists:
+    print("       ✓ TRACEFACE VERIFICATION SUCCESS")
+else:
+    print("       ✗ TRACEFACE VERIFICATION FAILED")
+
+print("==============================================")
+
+print("\nTraceFace pipeline completed successfully.")
+print()

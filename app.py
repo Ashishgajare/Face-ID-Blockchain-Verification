@@ -3,6 +3,8 @@ import re
 
 import serpapi
 
+from search.social_filter import filter_social_results
+
 from dotenv import load_dotenv
 from web3 import Web3
 
@@ -140,6 +142,8 @@ def main():
     print("=" * 70)
     print("TRACEFACE - FACE IDENTIFICATION & BLOCKCHAIN VERIFICATION")
     print("=" * 70)
+    print("UI mode: verification studio")
+    print("Social media detection enabled")
 
     # ========================================================
     # PHASE 1 - INPUT IMAGE
@@ -221,6 +225,15 @@ def main():
         "visual_matches",
         []
     )
+
+    social_matches = filter_social_results(visual_matches)
+
+    if social_matches:
+        print("\nSocial media matches found:", len(social_matches))
+        for match in social_matches[:5]:
+            print(f"- {match['platform']}: {match['url']}")
+    else:
+        print("\nNo social media matches found in the reverse-search results.")
 
     print(
         "Google Lens visual matches found:",

@@ -1,0 +1,165 @@
+FACE ID + BLOCKCHAIN VERIFICATION
+Milestone 1 - Windows PowerShell Run Instructions
+
+This guide runs the current Milestone 1 face verification pipeline.
+The tested environment name is: fbv
+
+1. Open PowerShell
+
+Open a new PowerShell terminal in VS Code or Windows PowerShell.
+
+2. Go to the project folder
+
+Run:
+
+cd "C:\Users\Ashish\OneDrive\Desktop\projects\Face ID + Blockchain Verification\face-blockchain-verification"
+
+3. Use the correct Python environment
+
+The verified environment is the conda environment named fbv.
+Run:
+
+conda activate fbv
+
+If PowerShell says that conda is not recognized, run this instead:
+
+& "C:\Users\Ashish\Miniconda3\Scripts\activate.ps1" fbv
+
+Confirm that Python is coming from fbv:
+
+python --version
+where.exe python
+
+The Python path should contain:
+
+C:\Users\Ashish\Miniconda3\envs\fbv
+
+4. Install or refresh dependencies
+
+Run this once, or whenever requirements.txt changes:
+
+python -m pip install -r requirements.txt
+
+5. Configure the SerpApi key
+
+The project reads the key from this file:
+
+C:\Users\Ashish\OneDrive\Desktop\projects\Face ID + Blockchain Verification\face-blockchain-verification\.env
+
+The file must contain a line like this:
+
+SERPAPI_KEY=YOUR_SERPAPI_KEY
+
+Do not add spaces around the equals sign and do not commit this file.
+The existing .env file already contains the configured key. Never share that key publicly.
+
+6. Run the tests
+
+Run:
+
+python -m pytest tests -q
+
+Expected result:
+
+5 passed
+
+7. Run the live pipeline on the provided image
+
+Run:
+
+python -m main --image "C:\Users\Ashish\Downloads\Screenshot 2026-09-07 161734.png"
+
+The first run downloads the InsightFace buffalo_l model. This is approximately 280 MB and may take a few minutes.
+The model is cached here:
+
+C:\Users\Ashish\.insightface\models\buffalo_l
+
+8. Understand the output
+
+The CLI reports:
+
+- Whether the input image loaded
+- The number of detected faces
+- Whether the face embedding was generated
+- The number of reverse-image-search results
+- The number of social-media candidates
+- The best face-similarity result, if a candidate is found
+
+The input image must contain exactly one detectable face.
+
+9. Run with a custom image
+
+Use this format, replacing the path with your own image:
+
+python -m main --image "C:\path\to\your\image.jpg"
+
+You can override the similarity threshold like this:
+
+python -m main --image "C:\path\to\your\image.jpg" --threshold 0.65
+
+10. Run everything from a fresh setup
+
+If the fbv environment does not exist yet:
+
+conda create -n fbv python=3.11 -y
+conda activate fbv
+cd "C:\Users\Ashish\OneDrive\Desktop\projects\Face ID + Blockchain Verification\face-blockchain-verification"
+python -m pip install -r requirements.txt
+python -m pytest tests -q
+python -m main --image "C:\Users\Ashish\Downloads\Screenshot 2026-09-07 161734.png"
+
+11. Common problems
+
+Problem: The terminal is using .venv instead of fbv.
+Fix:
+
+conda activate fbv
+where.exe python
+
+Problem: InsightFace cannot download antelope.zip.
+Fix: The project now uses buffalo_l. Make sure you are running the current code from this folder:
+
+C:\Users\Ashish\OneDrive\Desktop\projects\Face ID + Blockchain Verification\face-blockchain-verification
+
+Problem: SERPAPI_KEY is not set.
+Fix: Check that .env exists in the project folder and contains SERPAPI_KEY=YOUR_SERPAPI_KEY.
+
+Problem: The image path contains spaces.
+Fix: Keep the image path inside double quotes.
+
+Problem: No social candidates are found.
+This is a valid result. It means the reverse-image search returned no supported social-media candidates for that image.
+
+12. Stop using the environment
+
+When finished, run:
+
+conda deactivate
+
+13. Blockchain status and setup
+
+The blockchain layer is implemented and locally tested, but it does not send a live transaction until a contract is deployed and blockchain credentials are configured.
+
+The Solidity contract is here:
+
+C:\Users\Ashish\OneDrive\Desktop\projects\Face ID + Blockchain Verification\contracts\FaceVerification.sol
+
+Deploy that contract to Polygon Amoy using Remix. In Remix, compile with Solidity 0.8.20, choose Injected Provider - MetaMask, select Polygon Amoy (chain ID 80002), deploy FaceVerification, and copy the deployed address. Then add these values to .env:
+
+POLYGON_RPC_URL=https://rpc-amoy.polygon.technology
+WALLET_ADDRESS=YOUR_TEST_WALLET_ADDRESS
+PRIVATE_KEY=YOUR_TEST_WALLET_PRIVATE_KEY
+CONTRACT_ADDRESS=YOUR_DEPLOYED_CONTRACT_ADDRESS
+CHAIN_ID=80002
+
+Get test POL from https://faucet.polygon.technology/. Never share or commit PRIVATE_KEY. Use a test wallet funded only with Polygon Amoy test POL.
+
+The blockchain Python client can then be imported with:
+
+python -c "from blockchain.contract import FaceVerificationContract; print('blockchain client ready')"
+
+The Milestone 2 CLI sends a transaction only when a real social candidate is found and its face is verified. If there is no match, it prints Transaction: not sent and does not create a blockchain record.
+
+After a confirmed transaction, verify it at:
+
+https://amoy.polygonscan.com/tx/YOUR_TRANSACTION_HASH

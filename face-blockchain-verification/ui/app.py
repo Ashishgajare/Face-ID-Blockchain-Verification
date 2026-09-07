@@ -39,6 +39,17 @@ def log_activity(message: str, level: str = "INFO") -> None:
     )
     st.session_state.activity_log = st.session_state.activity_log[-20:]
 
+
+def render_activity(target) -> None:
+    if st.session_state.activity_log:
+        entries = "".join(
+            f'<div class="activity-entry"><span class="activity-time">{item["time"]}</span><span class="activity-level">{item["level"]}</span><span>{item["message"]}</span></div>'
+            for item in reversed(st.session_state.activity_log)
+        )
+    else:
+        entries = '<div class="activity-entry"><span class="activity-time">--:--:--</span><span class="activity-level">IDLE</span><span>Ready for a source image.</span></div>'
+    target.markdown(f'<div class="activity-log">{entries}</div>', unsafe_allow_html=True)
+
 st.markdown(
     """
     <style>
@@ -54,13 +65,13 @@ st.markdown(
     h2 { font-size:clamp(2rem,5vw,4.8rem); line-height:.9; letter-spacing:-.05em; margin:0; }
     h3 { letter-spacing:-.03em; }
     .mono { font-family:'DM Mono',monospace; text-transform:uppercase; letter-spacing:.08em; font-size:.72rem; }
-    .topline { display:flex; justify-content:space-between; border-bottom:1px solid var(--line); padding-bottom:1rem; margin-bottom:4rem; color:var(--muted); }
-    .hero { min-height:55vh; display:grid; grid-template-columns:1.2fr .8fr; gap:2rem; align-items:end; padding-bottom:3rem; border-bottom:1px solid var(--line); }
+    .topline { display:flex; justify-content:space-between; border-bottom:1px solid var(--line); padding-bottom:.7rem; margin-bottom:2.2rem; color:var(--muted); }
+    .hero { min-height:42vh; display:grid; grid-template-columns:1.2fr .8fr; gap:2rem; align-items:end; padding-bottom:2rem; border-bottom:1px solid var(--line); }
     .hero-kicker,.section-tag { color:var(--orange); }
     .hero-copy { color:var(--muted); max-width:31rem; font-size:1.05rem; line-height:1.4; }
     .hero-mark { color:var(--orange); font-size:clamp(8rem,21vw,22rem); line-height:.55; text-align:right; letter-spacing:-.14em; }
-    .ticker { overflow:hidden; white-space:nowrap; border-bottom:1px solid var(--line); color:var(--acid); padding:.85rem 0; margin-bottom:4rem; font-family:'DM Mono',monospace; font-size:.78rem; }
-    .section-head { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin:5rem 0 1.5rem; }
+    .ticker { overflow:hidden; white-space:nowrap; border-bottom:1px solid var(--line); color:var(--acid); padding:.6rem 0; margin-bottom:2.2rem; font-family:'DM Mono',monospace; font-size:.78rem; }
+    .section-head { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin:2.5rem 0 1rem; }
     .panel { background:var(--paper); color:var(--ink); padding:1.3rem; min-height:100%; }
     .panel * { color:var(--ink) !important; }
     .panel-dark { border:1px solid var(--line); padding:1.3rem; min-height:100%; }
@@ -71,19 +82,19 @@ st.markdown(
     .stButton > button { background:var(--orange); border:0; border-radius:0; color:var(--ink); font-family:'DM Mono',monospace; text-transform:uppercase; letter-spacing:.08em; font-weight:500; padding:.8rem 1.2rem; }
     .stButton > button:hover { background:var(--acid); color:var(--ink); }
     .metric-row { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line); margin-top:1.5rem; }
-    .metric { background:var(--ink); padding:1.1rem; min-height:8rem; }
+    .metric { background:var(--ink); padding:.85rem; min-height:6.2rem; }
     .metric .value { font-size:2rem; font-weight:600; margin-top:1rem; }
     .status { border-left:5px solid var(--orange); padding:1rem 1.2rem; background:#211b18; margin-top:1.2rem; }
     .status.good { border-color:var(--acid); }
     .status p { margin:.25rem 0; }
-    .timeline { display:grid; grid-template-columns:repeat(6,1fr); margin:2rem 0 4rem; border-top:1px solid var(--line); }
-    .step { padding:1rem .7rem 0 0; border-right:1px solid var(--line); min-height:8rem; }
+    .timeline { display:grid; grid-template-columns:repeat(6,1fr); margin:1rem 0 2.4rem; border-top:1px solid var(--line); }
+    .step { padding:.75rem .7rem 0 0; border-right:1px solid var(--line); min-height:6rem; }
     .step:last-child { border-right:0; }
     .step-no { color:var(--orange); font-family:'DM Mono',monospace; }
     .step-name { margin-top:1.5rem; font-weight:600; }
     .footer { border-top:1px solid var(--line); margin-top:5rem; padding-top:1rem; color:var(--muted); display:flex; justify-content:space-between; }
-    .activity-log { border:1px solid var(--line); background:#181818; padding:1rem 1.2rem; margin-top:2rem; }
-    .activity-entry { display:grid; grid-template-columns:8rem 5rem 1fr; gap:1rem; padding:.55rem 0; border-bottom:1px solid rgba(242,238,228,.08); font-size:.84rem; }
+    .activity-log { border:1px solid var(--line); background:#181818; padding:.65rem 1rem; margin-top:.5rem; max-height:14rem; overflow-y:auto; }
+    .activity-entry { display:grid; grid-template-columns:8rem 5rem 1fr; gap:1rem; padding:.38rem 0; border-bottom:1px solid rgba(242,238,228,.08); font-size:.8rem; }
     .activity-entry:last-child { border-bottom:0; }
     .activity-time,.activity-level { color:var(--muted); font-family:'DM Mono',monospace; font-size:.68rem; text-transform:uppercase; }
     .activity-level { color:var(--orange); }
@@ -169,8 +180,16 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+st.markdown('<div class="section-head"><div><div class="mono section-tag">Live / Activity</div><h2>What is<br>happening.</h2></div><div class="mono">Session only / safe events</div></div>', unsafe_allow_html=True)
+activity_slot = st.empty()
+render_activity(activity_slot)
+
 if run and upload:
-    log_activity(f"Source image received: {Path(upload.name).suffix.lower() or 'image'}")
+    def pipeline_progress(message: str, level: str = "INFO") -> None:
+        log_activity(message, level)
+        render_activity(activity_slot)
+
+    pipeline_progress(f"Source image received: {Path(upload.name).suffix.lower() or 'image'}")
     suffix = Path(upload.name).suffix or ".jpg"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
         temp_file.write(upload.getbuffer())
@@ -180,9 +199,14 @@ if run and upload:
             progress.write("Loading image and detecting exactly one face")
             progress.write("Generating embedding and searching reverse image sources")
             progress.write("Comparing real candidate faces against the 0.65 gate")
-            result = run_pipeline(temp_path, threshold=FACE_SIMILARITY_THRESHOLD, use_gpu=USE_GPU)
+            result = run_pipeline(
+                temp_path,
+                threshold=FACE_SIMILARITY_THRESHOLD,
+                use_gpu=USE_GPU,
+                progress_callback=pipeline_progress,
+            )
             progress.update(label="Verification complete", state="complete", expanded=False)
-        log_activity(f"Verification complete: {result.get('input_faces', 0)} face(s), {result.get('reverse_results_count', 0)} search result(s)")
+        pipeline_progress(f"Verification complete: {result.get('input_faces', 0)} face(s), {result.get('reverse_results_count', 0)} search result(s)")
     except Exception as exc:
         heading, message = _friendly_error(exc)
         log_activity(f"{heading}: {message}", "ERROR")
@@ -223,6 +247,30 @@ if run and upload:
                 if inaccessible:
                     st.warning("A returned candidate could not be accessed or compared. No match was claimed.")
 
+        st.markdown('<div class="section-head"><div><div class="mono section-tag">Sources / All returned candidates</div><h3>Every signal in the room.</h3></div><div class="mono">Ranked by similarity</div></div>', unsafe_allow_html=True)
+        candidates = sorted(
+            result.get("candidate_details", []),
+            key=lambda item: item.get("best_similarity", 0),
+            reverse=True,
+        )
+        if candidates:
+            for index, candidate in enumerate(candidates, start=1):
+                similarity_value = candidate.get("best_similarity", 0)
+                decision = "MATCH" if candidate.get("matched") else "NO MATCH"
+                state = "good" if candidate.get("matched") else ""
+                url = candidate.get("url") or ""
+                link = f'<a href="{url}" target="_blank">Open source ↗</a>' if url else "No URL"
+                st.markdown(
+                    f'<div class="panel-dark" style="padding:.8rem 1rem;margin:.45rem 0;display:grid;grid-template-columns:2.5rem 1fr auto;gap:1rem;align-items:center;">'
+                    f'<div class="mono" style="color:var(--orange)">#{index:02d}</div>'
+                    f'<div><strong>{candidate.get("platform", "Unknown")}</strong><br><span class="mono">{link} · {"accessible" if candidate.get("accessible") else "inaccessible"} · {candidate.get("candidate_face_count", 0)} face(s)</span></div>'
+                    f'<div class="status {state}" style="margin:0;padding:.5rem .7rem;text-align:right"><div class="mono">{similarity_value:.0%}</div><div class="mono">{decision}</div></div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.caption("No social candidates were returned by the live search.")
+
         st.markdown('<div class="section-head"><div><div class="mono section-tag">05 / Blockchain</div><h2>Leave a<br>receipt.</h2></div></div>', unsafe_allow_html=True)
         if blockchain.get("transaction_hash"):
             log_activity("Polygon Amoy transaction confirmed", "CHAIN")
@@ -254,14 +302,6 @@ if run and upload:
     finally:
         Path(temp_path).unlink(missing_ok=True)
 
-st.markdown('<div class="section-head"><div><div class="mono section-tag">Live / Activity</div><h2>What is<br>happening.</h2></div><div class="mono">Session only / safe events</div></div>', unsafe_allow_html=True)
-if st.session_state.activity_log:
-    entries = "".join(
-        f'<div class="activity-entry"><span class="activity-time">{item["time"]}</span><span class="activity-level">{item["level"]}</span><span>{item["message"]}</span></div>'
-        for item in reversed(st.session_state.activity_log)
-    )
-else:
-    entries = '<div class="activity-entry"><span class="activity-time">--:--:--</span><span class="activity-level">IDLE</span><span>Ready for a source image.</span></div>'
-st.markdown(f'<div class="activity-log">{entries}</div>', unsafe_allow_html=True)
+render_activity(activity_slot)
 
 st.markdown('<div class="footer"><span class="mono">LESS NOISE. MORE SIGNAL.</span><span class="mono">Milestone 3 / Final Verification Studio</span></div>', unsafe_allow_html=True)

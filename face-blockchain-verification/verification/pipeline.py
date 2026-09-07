@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 import hashlib
 import logging
 from face.detector import detect_faces_from_path, FaceDetectionResult
@@ -141,10 +141,16 @@ def run_pipeline(
     threshold: float | None = None,
     use_gpu: bool = False,
     development_test_mode: bool = False,
+    progress_callback: Optional[Callable[[str, str], None]] = None,
 ) -> dict:
     threshold = threshold if threshold is not None else config.FACE_SIMILARITY_THRESHOLD
 
+    def progress(message: str, level: str = "INFO") -> None:
+        if progress_callback:
+            progress_callback(message, level)
+
     # Stage 1: detect input face
+    progress("Detecting exactly one face")
     det_result: FaceDetectionResult = detect_faces_from_path(image_path, use_gpu=use_gpu)
     if not det_result.success:
         raise RuntimeError(f"Face detection failed: {det_result.error}")
@@ -156,17 +162,22 @@ def run_pipeline(
         raise RuntimeError("Embedding missing from detected input face")
 
     input_emb = normalize_embedding(to_numpy(input_face.embedding))
+    progress("Face detected; ArcFace embedding generated")
 
     # Stage 2: reverse image search
+    progress("Calling Google reverse image search via SerpApi")
     resp = reverse_image_search(image_path)
     parsed = parse_serpapi_response(resp)
+    progress(f"Reverse search completed: {len(parsed)} result(s)")
 
     # Stage 3: social filtering
     social_candidates = filter_social_results(parsed)
+    progress(f"Social filter found {len(social_candidates)} candidate(s)")
 
     candidate_results: List[CandidateVerificationResult] = []
 
     for cand in social_candidates:
+        progress(f"Comparing candidate from {cand.platform}")
         vr = CandidateVerificationResult(cand)
         # attempt to get an image url from candidate
         img_url = cand.image_url or cand.url
@@ -200,6 +211,11 @@ def run_pipeline(
         except Exception as e:
             vr.error = str(e)
         candidate_results.append(vr)
+        progress(
+            f"Candidate {cand.platform}: {vr.best_similarity:.2f} similarity, "
+            f"{'match' if vr.matched else 'no match'}",
+            "MATCH" if vr.matched else "INFO",
+        )
 
     if development_test_mode and not candidate_results and parsed:
         real_result = next((item for item in parsed if item.link), None)
@@ -253,6 +269,7 @@ def run_pipeline(
             "matched": best.matched,
         }
         output["blockchain"] = _anchor_verified_match(image_path, best, threshold)
+        progress(f"Verification result: {'match' if best.matched else 'no match'}")
         output["verification_record"] = output["blockchain"].get("record")
         if output["blockchain"].get("record_hash"):
             output["verification_record_hash"] = output["blockchain"]["record_hash"]
